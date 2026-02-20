@@ -7,10 +7,14 @@ class FileValidator:
 
     @staticmethod
     def validate_file(filename: str):
+
         if not filename:
             raise ValueError("No file provided.")
 
-        extension = filename.split(".")[-1].lower()
+        if "." not in filename:
+            raise ValueError("Invalid file format.")
+
+        extension = filename.rsplit(".", 1)[1].lower()
 
         if extension not in FileValidator.ALLOWED_EXTENSIONS:
             raise ValueError("Only CSV files are allowed.")

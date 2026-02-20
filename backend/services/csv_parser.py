@@ -10,11 +10,19 @@ class CSVParser:
 
     @staticmethod
     def parse(file_path: str) -> Optional[pd.DataFrame]:
+
         try:
+            # Try default encoding
             df = pd.read_csv(file_path)
             return df
+
         except UnicodeDecodeError:
-            df = pd.read_csv(file_path, encoding="latin-1")
-            return df
+            # Fallback encoding
+            try:
+                df = pd.read_csv(file_path, encoding="latin-1")
+                return df
+            except Exception as e:
+                raise Exception(f"CSV Parsing Error (latin-1): {str(e)}")
+
         except Exception as e:
             raise Exception(f"CSV Parsing Error: {str(e)}")
