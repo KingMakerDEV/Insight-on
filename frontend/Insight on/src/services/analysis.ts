@@ -1,34 +1,7 @@
-import api from "./api";
+import apiClient from './api';
+import { AnalyzeResponse } from '@/types/api';
 
-/**
- * Upload CSV / Excel dataset to backend
- */
-export const uploadDataset = async (file: File) => {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await api.post("/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-
+export async function analyzeDataset(filename: string): Promise<AnalyzeResponse> {
+  const response = await apiClient.post<AnalyzeResponse>('/analyze', { filename });
   return response.data;
-};
-
-/**
- * Trigger backend analysis & get visualization-ready data
- */
-export const analyzeDataset = async () => {
-  const response = await api.post(
-    "/analyze",
-    {},
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  return response.data;
-};
+}

@@ -1,84 +1,124 @@
-import { useState } from "react";
-import { analyzeDataset } from "../services/analysis";
-
-import KpiGrid from "../components/KPI/KpiGrid";
-import FilterPanel from "../components/Filters/FilterPanel";
-import BarChart from "../components/charts/BarChart";
-import LineChart from '../components/charts/LineChart';
-import ScatterPlot from "../components/charts/ScatterPlot";
-import InsightPanel from "../components/InsightPanel";
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { analyzeDataset } from '@/services/analysis';
+import { getChartConfig } from '@/services/chart';
+import { getInsights } from '@/services/insights';
+import type { UploadResponse, AnalyzeResponse, ChartConfigResponse, InsightsResponse } from '@/types/api';
+import DynamicChart from '@/components/charts/DynamicChart';
+import KpiCards from '@/components/kpi/KpiCards';
+import InsightPanel from '@/components/insights/InsightPanel';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const uploadResult = (location.state as { uploadResult?: UploadResponse })?.uploadResult;
 
-  const handleGenerateVisualization = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
+  const [chartConfig, setChartConfig] = useState<ChartConfigResponse | null>(null);
+  const [insights, setInsights] = useState<InsightsResponse | null>(null);
+  const [loading, setLoading] = useState({ analysis: true, chart: true, insights: true });
+  const [errors, setErrors] = useState({ analysis: '', chart: '', insights: '' });
 
-      const response = await analyzeDataset();
-      setData(response);
-    } catch (err) {``
-      setError("Failed to generate visualizations");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!uploadResult) {
+      navigate('/upload');
+      return;
     }
-  };
+
+    const filename = uploadResult.filename;
+
+    analyzeDataset(filename)
+      .then((data) => setAnalysis(data))
+      .catch(() => setErrors((p) => ({ ...p, analysis: 'Failed to load analysis.' })))
+      .finally(() => setLoading((p) => ({ ...p, analysis: false })));
+
+    getChartConfig(filename)
+      .then((data) => setChartConfig(data))
+      .catch(() => setErrors((p) => ({ ...p, chart: 'Failed to load chart configuration.' })))
+      .finally(() => setLoading((p) => ({ ...p, chart: false })));
+
+    getInsights(filename)
+      .then((data) => setInsights(data))
+      .catch(() => setErrors((p) => ({ ...p, insights: 'Failed to load AI insights.' })))
+      .finally(() => setLoading((p) => ({ ...p, insights: false })));
+  }, [uploadResult, navigate]);
+
+  if (!uploadResult) return null;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-8">
+          {/* Dataset Summary */}
+          <Card className="rounded-xl shadow-md">
+            <CardHeader>
+              <CardTitle className="text-xl">Dataset Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">File Name</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{uploadResult.filename}</p>
+                </div>
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rows</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{uploadResult.rows.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Columns</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{uploadResult.columns.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <button
-          onClick={handleGenerateVisualization}
-          disabled={loading}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg text-sm font-medium"
-        >
-          {loading ? "Generating..." : "Generate Visualization"}
-        </button>
-      </div>
+          {/* KPI Cards */}
+          {loading.analysis ? (
+            <div className="grid gap-4 sm:grid-cols-4">
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+            </div>
+          ) : errors.analysis ? (
+            <ErrorAlert message={errors.analysis} />
+          ) : analysis ? (
+            <KpiCards stats={analysis.stats} />
+          ) : null}
 
-      {/* Filters */}
-      <FilterPanel />
+          {/* Dynamic Chart */}
+          {loading.chart ? (
+            <Skeleton className="h-80 rounded-xl" />
+          ) : errors.chart ? (
+            <ErrorAlert message={errors.chart} />
+          ) : chartConfig ? (
+            <DynamicChart config={chartConfig} />
+          ) : null}
 
-      {/* Error */}
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 p-3 rounded-lg text-sm">
-          {error}
+          {/* AI Insights */}
+          {loading.insights ? (
+            <Skeleton className="h-40 rounded-xl" />
+          ) : errors.insights ? (
+            <ErrorAlert message={errors.insights} />
+          ) : insights ? (
+            <InsightPanel insights={insights} />
+          ) : null}
         </div>
-      )}
-
-      {/* KPI Cards */}
-      {data && <KpiGrid data={data.kpis} />}
-
-      {/* Charts */}
-      {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-            <h2 className="text-lg font-semibold mb-2">
-              Category Distribution
-            </h2>
-            <BarChart data={data.barChart} />
-          </div>
-
-          <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-            <h2 className="text-lg font-semibold mb-2">Trend Over Time</h2>
-            <LineChart data={data.lineChart} />
-          </div>
-
-          <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 lg:col-span-2">
-            <h2 className="text-lg font-semibold mb-2">Correlation</h2>
-            <ScatterPlot data={data.scatterPlot} />
-          </div>
-        </div>
-      )}
-
-      {/* Insights */}
-      {data && <InsightPanel insights={data.insights} />}
+      </main>
+      <Footer />
     </div>
+  );
+}
+
+function ErrorAlert({ message }: { message: string }) {
+  return (
+    <Alert variant="destructive" className="rounded-xl">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }

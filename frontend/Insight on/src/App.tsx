@@ -1,18 +1,32 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import UploadPage from "./pages/UploadPage";
-import DashboardPage from "./pages/DashboardPage";
+import { Routes, Route, Navigate } from "react-router-dom"
+import UploadPage from "./pages/UploadPage"
+import DashboardPage from "./pages/DashboardPage"
+import Navbar from "./components/layout/Navbar"
+import Footer from "./components/layout/Footer"
 
-export default function App() {
+function App() {
   return (
-    <Routes>
-      {/* Upload CSV Page */}
-      <Route path="/" element={<UploadPage />} />
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      
+      {/* Top Navigation */}
+      <Navbar />
 
-      {/* Dashboard */}
-      <Route path="/dashboard" element={<DashboardPage />} />
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <Routes>
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
 
-      {/* Catch All Route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+          {/* Fallback Route */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  )
 }
+
+export default App

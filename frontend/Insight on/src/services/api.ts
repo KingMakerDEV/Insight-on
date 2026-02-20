@@ -1,14 +1,12 @@
-import axios from "axios";
+import axios from 'axios';
 
-/**
- * Centralized Axios instance
- */
-const api = axios.create({
-  baseURL: "http://localhost:5000", // backend URL
-  timeout: 10000,
+const API_BASE_URL = 'http://localhost:5000';
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
-export default api;
+export default apiClient;
